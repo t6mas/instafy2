@@ -6,7 +6,7 @@ USER = "typemkeell"
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK")
 API_URL = "https://instagram120.p.rapidapi.com/api/instagram/stories"
 API_KEY = os.getenv("X_RAPIDAPI_KEY")
-CHECK_INTERVAL = 600  # 10 minutos
+CHECK_INTERVAL = 60  # 10 minutos
 
 # === FLASK APP ===
 app = Flask(__name__)
@@ -75,3 +75,4 @@ if __name__ == "__main__":
         print(f"❌ Error al iniciar el hilo: {e}")
 
     app.run(host="0.0.0.0", port=10000)
+
