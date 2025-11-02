@@ -1,42 +1,55 @@
-import requests, time, os
+from flask import Flask
+import threading, requests, time, os
 
-# Configuración
-USER = "typemkeell"  # 👈 cuenta pública a monitorear
-WEBHOOK_URL = "https://discord.com/api/webhooks/1434371712673124443/_l7xzlrLHxe3zx5Lg6BvcQgY57mCQbW-LPBpuy_n3WHx_6HnkpXDApZ88rFJcS_qX-PT"  # 👈 tu webhook de Discord
+# === CONFIGURACIÓN ===
+USER = "typemkeell"  # Usuario a monitorear
+WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK")  # Se lee desde variable de entorno
 API_URL = "https://instagram120.p.rapidapi.com/api/instagram/stories"
+API_KEY = os.getenv("X_RAPIDAPI_KEY")  # Tu clave de RapidAPI
+CHECK_INTERVAL = 600  # 10 minutos
 
-# Clave de RapidAPI guardada en variables de entorno (Render → Environment)
-API_KEY = os.getenv("X_RAPIDAPI_KEY")
+# === FLASK APP (mantiene Render activo) ===
+app = Flask(__name__)
 
-last_id = None
+@app.route("/")
+def home():
+    return "<h2>📡 Bot activo y monitoreando historias de Instagram</h2>"
 
-def get_stories():
-    headers = {
-        "content-type": "application/json",
-        "X-RapidAPI-Key": API_KEY,
-        "X-RapidAPI-Host": "instagram120.p.rapidapi.com"
-    }
-    body = {"username": USER}
-    r = requests.post(API_URL, headers=headers, json=body)
-    if r.ok:
-        data = r.json()
-        return data.get("result", [])
-    else:
-        print(f"⚠️ Error {r.status_code}: {r.text}")
-        return []
+# === FUNCIÓN PRINCIPAL ===
+def monitor():
+    print(f"👀 Monitoreando historias de @{USER}...")
+    last_id = None
+    while True:
+        try:
+            headers = {
+                "content-type": "application/json",
+                "X-RapidAPI-Key": API_KEY,
+                "X-RapidAPI-Host": "instagram120.p.rapidapi.com"
+            }
+            body = {"username": USER}
+            r = requests.post(API_URL, headers=headers, json=body)
 
-print(f"👀 Monitoreando historias de @{USER}...")
+            if r.ok:
+                data = r.json().get("result", [])
+                if data:
+                    newest = data[0].get("id") or data[0].get("pk")
+                    if newest != last_id:
+                        last_id = newest
+                        media_url = data[0].get("media") or ""
+                        msg = f"📸 Nueva historia de @{USER}!\n{media_url}\nhttps://www.instagram.com/stories/{USER}/"
+                        requests.post(WEBHOOK_URL, json={"content": msg})
+                        print(msg)
+                else:
+                    print("🔍 No hay historias nuevas.")
+            else:
+                print(f"⚠️ Error API {r.status_code}: {r.text}")
 
-while True:
-    stories = get_stories()
-    if stories:
-        newest = stories[0].get("id") or stories[0].get("pk")
-        if newest != last_id:
-            last_id = newest
-            media_url = stories[0].get("media", stories[0].get("image_versions2", {}).get("candidates", [{}])[0].get("url", ""))
-            msg = f"📸 Nueva historia de @{USER}!\n{media_url}\nhttps://www.instagram.com/stories/{USER}/"
-            requests.post(WEBHOOK_URL, json={"content": msg})
-            print(msg)
-    else:
-        print("🔍 No hay historias nuevas.")
-    time.sleep(1800)  # cada 10 minutos
+        except Exception as e:
+            print(f"❌ Error general: {e}")
+
+        time.sleep(CHECK_INTERVAL)
+
+# === INICIO ===
+if __name__ == "__main__":
+    threading.Thread(target=monitor, daemon=True).start()
+    app.run(host="0.0.0.0", port=10000)
