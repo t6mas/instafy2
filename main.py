@@ -8,7 +8,8 @@ USER = os.getenv("IG_USER", "typemkeell")               # cuenta pública a moni
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK")              # webhook de Discord (ENV en Render)
 API_URL = "https://instagram120.p.rapidapi.com/api/instagram/stories"
 API_KEY = os.getenv("X_RAPIDAPI_KEY")                   # clave RapidAPI (ENV en Render)
-CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", "60")) # segundos entre chequeos (arranca YA)
+CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", "1200"))  # 20 min por defecto (en segundos)
+NOTIFY_NO_STORIES = os.getenv("NOTIFY_NO_STORIES", "1") == "1"  # 1=notificar "sin historias"
 PORT = int(os.getenv("PORT", "10000"))
 
 STATE_PATH = "/tmp/insta_state.json"                    # persiste último id (evita duplicados)
@@ -118,7 +119,10 @@ def check_and_notify():
     items = extract_items(payload)
     if not items:
         print("🔍 No hay historias.", flush=True)
-        state["last_status"] = "no_stories"; save_state(); return
+        state["last_status"] = "no_stories"; save_state()
+        if NOTIFY_NO_STORIES:
+            send_discord(f"🚫 No hay historias de @{USER} por ahora. ({state['last_run_at']})")
+        return
 
     newest = items[0]
     nid = extract_id(newest)
@@ -129,7 +133,7 @@ def check_and_notify():
         state["last_id"] = nid
         state["last_status"] = "notified"
         save_state()
-        text = f"📸 Nueva historia de @{USER}!"
+        text = f"📸 Nueva historia de @{USER}! ({state['last_run_at']})"
         send_discord(text, embed_url=media_url or f"https://www.instagram.com/stories/{USER}/")
     else:
         print("⏭️ Sin cambios (misma historia).", flush=True)
@@ -152,16 +156,14 @@ def manual_check():
     return jsonify({"user": USER, **state})
 
 def start_scheduler():
-    # Cargar estado previo
     load_state()
-    # Aviso de arranque
     if WEBHOOK_URL:
         send_discord(f"🟢 Bot iniciado. Monitoreando @{USER}.")
-    # Programar: corre inmediatamente y luego cada CHECK_INTERVAL
     scheduler = BackgroundScheduler(daemon=True)
     from datetime import datetime as dt
+    # Primera ejecución inmediata y luego cada CHECK_INTERVAL
     scheduler.add_job(check_and_notify, "interval", seconds=CHECK_INTERVAL,
-                      next_run_time=dt.now())  # primera ejecución inmediata
+                      next_run_time=dt.now())
     scheduler.start()
     print(f"🚀 Scheduler iniciado cada {CHECK_INTERVAL}s", flush=True)
 
