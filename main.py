@@ -1,18 +1,3 @@
-from flask import Flask
-import threading, requests, time, os
-
-USER = "typemkeell"
-WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK")
-API_URL = "https://instagram120.p.rapidapi.com/api/instagram/stories"
-API_KEY = os.getenv("X_RAPIDAPI_KEY")
-CHECK_INTERVAL = 600  # 10 min
-
-app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return "<h2>📡 Bot activo y monitoreando historias de Instagram</h2>"
-
 def monitor():
     print(f"👀 Iniciando monitoreo de @{USER}...")
     if WEBHOOK_URL:
@@ -29,8 +14,13 @@ def monitor():
                 "X-RapidAPI-Key": API_KEY,
                 "X-RapidAPI-Host": "instagram120.p.rapidapi.com"
             }
-            r = requests.post(API_URL, headers=headers, json={"username": USER})
-            print("📡 Llamada API:", r.status_code)
+            body = {"username": USER}
+            r = requests.post(API_URL, headers=headers, json=body)
+            print(f"📡 Llamada API: {r.status_code}")
+
+            # Mostrar los primeros 300 caracteres de la respuesta para depurar
+            print("🧾 Respuesta parcial:", r.text[:300])
+
             if r.ok:
                 data = r.json().get("result", [])
                 if data:
@@ -50,7 +40,3 @@ def monitor():
             print("❌ Error en el loop:", e)
 
         time.sleep(CHECK_INTERVAL)
-
-if __name__ == "__main__":
-    threading.Thread(target=monitor, daemon=True).start()
-    app.run(host="0.0.0.0", port=10000)
