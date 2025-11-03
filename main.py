@@ -9,12 +9,12 @@ WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK")              # webhook de Discord (EN
 API_URL = "https://instagram120.p.rapidapi.com/api/instagram/stories"
 API_KEY = os.getenv("X_RAPIDAPI_KEY")                   # clave RapidAPI (ENV en Render)
 
-CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", "1200"))      # 20 min por defecto (segundos)
+CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", "3600"))      # 20 min por defecto (segundos)
 NOTIFY_NO_STORIES = os.getenv("NOTIFY_NO_STORIES", "1") == "1" # 1=notificar "sin historias"
 
 # Notificar también "sin cambios" (misma historia), con cooldown para evitar spam
 NOTIFY_NO_CHANGE = os.getenv("NOTIFY_NO_CHANGE", "1") == "1"
-NO_CHANGE_COOLDOWN = int(os.getenv("NO_CHANGE_COOLDOWN", "1200"))  # 1 hora por defecto
+NO_CHANGE_COOLDOWN = int(os.getenv("NO_CHANGE_COOLDOWN", "3600"))  # 1 hora por defecto
 
 # Keepalive interno (para evitar 502/hibernación sin monitor externo)
 SELF_URL = os.getenv("SELF_URL")                        # ej: https://TUAPP.onrender.com/ping
@@ -260,3 +260,4 @@ if __name__ == "__main__":
     # Con 'python main.py' esto asegura una 2ª llamada segura (no duplica gracias al flag).
     start_scheduler_once()
     app.run(host="0.0.0.0", port=PORT)
+
